@@ -163,9 +163,9 @@ export BACKUP_DUE_DAYS=7
 |---|---|
 | `↑/↓` | move |
 | `enter` | browse selected snapshot |
-| `d` | forget (delete) selected snapshot |
-| `r` | refresh list |
-| `q` / `ctrl+c` | quit |
+| `ctrl+f` | forget selected snapshot (restic's own term for deleting a snapshot) |
+| `ctrl+r` | refresh list |
+| `ctrl+q` / `ctrl+c` | quit |
 
 ### File tree
 | Key | Action |
@@ -174,14 +174,16 @@ export BACKUP_DUE_DAYS=7
 | *(type letters)* | jump to first matching file/dir name (case-insensitive prefix) |
 | `backspace` | edit the type-ahead search buffer |
 | `enter` | open directory / confirm type-ahead selection |
-| `R` (shift+r) | restore selected file/dir |
+| `ctrl+r` | restore selected file/dir |
 | `esc` | go up one level (instant, cached) |
-| `Q` (shift+q) | quit |
-| `ctrl+c` | quit (always works) |
+| `ctrl+q` / `ctrl+c` | quit |
 
-Lowercase `r`/`q` are reserved for typing file/folder names in the search
-buffer (e.g. a directory named `rea` or `qwirkle-sim`) — restore and quit use
-the shifted, capitalized keys instead to avoid colliding with search input.
+All action shortcuts use `ctrl+<letter>` rather than a bare letter or
+shift+letter, consistently across every view — a bare or shifted letter
+can't be reliably distinguished from the first character of a file/folder
+name you're typing into the search buffer (e.g. `README.md`, `qwirkle-sim`,
+`rea`), but `ctrl+<letter>` never produces a printable character, so it can
+never collide with search input.
 
 ### Restore prompt
 Standard text-input editing: `←/→` move cursor, `home/end` jump,

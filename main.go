@@ -267,14 +267,14 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case "q", "esc", "enter":
 			m.view = viewSnapshots
 			return m, loadSnapshotsCmd
-		case "ctrl+c":
+		case "ctrl+c", "ctrl+q":
 			return m, tea.Quit
 		}
 		return m, nil
 
 	case viewSnapshots:
 		switch msg.String() {
-		case "ctrl+c", "q":
+		case "ctrl+c", "ctrl+q":
 			return m, tea.Quit
 		case "up", "k":
 			if m.snapCursor > 0 {
@@ -302,13 +302,13 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.treeLoading = true
 			m.treeReqID++
 			return m, loadTreeCmd(snap.ID, m.path, m.treeReqID)
-		case "d":
+		case "ctrl+f":
 			if len(m.snapshots) == 0 {
 				return m, nil
 			}
 			m.view = viewConfirmForget
 			return m, nil
-		case "r":
+		case "ctrl+r":
 			return m, loadSnapshotsCmd
 		}
 		return m, nil
@@ -317,6 +317,8 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "y":
 			snap := m.snapshots[m.snapCursor]
+			m.view = viewMessage
+			m.msg = "Forgetting snapshot " + snap.ShortID + " ...\n"
 			return m, forgetCmd(snap.ID)
 		case "n", "esc":
 			m.view = viewSnapshots
@@ -329,7 +331,7 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// esc and quit always work immediately, even mid-fetch; a stale
 		// in-flight result is discarded via treeReqID when it eventually arrives.
 		switch msg.String() {
-		case "ctrl+c", "Q":
+		case "ctrl+c", "ctrl+q":
 			return m, tea.Quit
 		case "esc":
 			m.treeReqID++ // invalidate any in-flight fetch for the level we're leaving
@@ -388,7 +390,7 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				m.treeReqID++
 				return m, loadTreeCmd(m.activeSnap.ID, node.Path, m.treeReqID)
 			}
-		case "R":
+		case "ctrl+r":
 			if len(m.nodes) == 0 {
 				return m, nil
 			}
@@ -473,7 +475,7 @@ func (m model) View() string {
 		if end < len(m.snapshots) {
 			b.WriteString(dimStyle.Render(fmt.Sprintf("  ↓ %d more below", len(m.snapshots)-end)) + "\n")
 		}
-		b.WriteString("\n" + helpStyle.Render("↑/↓ move · enter browse · d forget · r refresh · q quit"))
+		b.WriteString("\n" + helpStyle.Render("↑/↓ move · enter browse · ctrl+f forget · ctrl+r refresh · ctrl+q quit"))
 
 	case viewConfirmForget:
 		snap := m.snapshots[m.snapCursor]
@@ -522,9 +524,9 @@ func (m model) View() string {
 			b.WriteString(dimStyle.Render(fmt.Sprintf("  ↓ %d more below", len(m.nodes)-tEnd)) + "\n")
 		}
 		if m.treeLoading {
-			b.WriteString("\n" + helpStyle.Render("esc back (instant) · Q quit — navigation paused while loading"))
+			b.WriteString("\n" + helpStyle.Render("esc back (instant) · ctrl+q quit — navigation paused while loading"))
 		} else {
-			b.WriteString("\n" + helpStyle.Render("↑/↓ move · type to jump · enter open/select · R restore (shift+r) · esc back · Q quit (shift+q)"))
+			b.WriteString("\n" + helpStyle.Render("↑/↓ move · type to jump · enter open/select · ctrl+r restore · esc back · ctrl+q quit"))
 		}
 
 	case viewRestorePrompt:
@@ -535,7 +537,7 @@ func (m model) View() string {
 
 	case viewMessage:
 		b.WriteString(m.msg + "\n\n")
-		b.WriteString(helpStyle.Render("enter/esc back to snapshots · q quit"))
+		b.WriteString(helpStyle.Render("enter/esc/q back to snapshots · ctrl+q quit"))
 	}
 
 	return b.String()
