@@ -94,6 +94,51 @@ systemctl --user restart restic-backup.timer
 systemctl --user disable --now restic-backup.timer
 ```
 
+## Shell warning: "backup is due" (scripts/backup-due-check)
+
+`scripts/backup-due-check` prints a warning in every new interactive shell
+if the last backup is stale or failed. It reads the `restic-backup.service`
+systemd unit's own structured properties (`ExecMainExitTimestamp`, `Result`)
+— **not** restic itself — so it costs ~15ms, not the ~3s restic pays per
+invocation to derive its repository key. It only makes sense paired with
+the systemd timer setup above, since it depends on that service's name and
+state.
+
+### Deploy
+
+```sh
+mkdir -p ~/.local/bin
+cp scripts/backup-due-check ~/.local/bin/
+chmod +x ~/.local/bin/backup-due-check
+```
+
+Then call it from `~/.bashrc` (after the interactively-only guard at the
+top of the file), right after wherever you source your restic env vars:
+
+```sh
+[ -x ~/.local/bin/backup-due-check ] && ~/.local/bin/backup-due-check
+```
+
+Open a new shell (or `source ~/.bashrc`) to pick it up.
+
+### Behavior
+
+- **Silent** if the last run succeeded and is within the threshold.
+- **Red warning** if stale:
+  `⚠ Backup is due. Last backup was N day(s) ago on <timestamp>.`
+- **Yellow warning** if the last run failed but isn't stale yet, or if the
+  service has never completed a run.
+
+### Configuring the threshold
+
+Default is 3 days. Override via `BACKUP_DUE_DAYS`, e.g. in `.bashrc` before
+the call:
+
+```sh
+export BACKUP_DUE_DAYS=7
+[ -x ~/.local/bin/backup-due-check ] && ~/.local/bin/backup-due-check
+```
+
 ## Features
 
 - **Snapshot list** — browse all snapshots, newest first
