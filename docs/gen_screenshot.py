@@ -85,7 +85,10 @@ def build_fake_snapshots(today):
     return snaps
 
 
-def heatmap_lines(snaps, today):
+def heatmap_lines(snaps, today, weeks=WEEKS):
+    """weeks controls how many of the most recent weeks are shown — mirrors
+    the real Go tool narrowing the grid to fit a smaller terminal width,
+    rather than clipping a fixed-size grid against a smaller canvas."""
     by_day = {}
     for s in snaps:
         k = s["time"].date()
@@ -95,11 +98,11 @@ def heatmap_lines(snaps, today):
     # convert to Sun=0..Sat=6 convention used by the real tool
     today_sun0 = (weekday + 1) % 7
     week_end = today + datetime.timedelta(days=6 - today_sun0)
-    start = week_end - datetime.timedelta(days=WEEKS * 7 - 1)
+    start = week_end - datetime.timedelta(days=weeks * 7 - 1)
 
-    month_label = [""] * WEEKS
+    month_label = [""] * weeks
     last_month = ""
-    for c in range(WEEKS):
+    for c in range(weeks):
         col_start = start + datetime.timedelta(days=c * 7)
         for dd in range(7):
             day = col_start + datetime.timedelta(days=dd)
@@ -111,7 +114,7 @@ def heatmap_lines(snaps, today):
 
     rows = []
     header = [("    ", FG)]
-    for c in range(WEEKS):
+    for c in range(weeks):
         label = month_label[c]
         header.append(("%-3s" % label, DIM))
     rows.append(header)
@@ -119,7 +122,7 @@ def heatmap_lines(snaps, today):
     weekday_labels = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"]
     for row in range(7):
         line = [("%-3s " % weekday_labels[row], FG)]
-        for c in range(WEEKS):
+        for c in range(weeks):
             day = start + datetime.timedelta(days=c * 7 + row)
             if day > today:
                 line.append(("   ", FG))

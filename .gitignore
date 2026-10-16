@@ -1,1 +1,8 @@
 restic-tui
+
+# Python (docs/gen_screenshot.py, docs/gen_workflow_gif.py)
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
