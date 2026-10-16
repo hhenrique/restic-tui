@@ -194,7 +194,7 @@ def main():
     y += LINE_H
 
     draw_segments(draw, PAD, y, [
-        ("↑/↓ move · enter browse · d forget · r refresh · q quit", HELP)
+        ("↑/↓ move · enter browse · ctrl+f forget · ctrl+r refresh · ctrl+q quit", HELP)
     ])
 
     img.save("./docs/screenshot.png")
