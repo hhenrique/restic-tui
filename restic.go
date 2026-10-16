@@ -16,6 +16,9 @@ type Snapshot struct {
 	Time     time.Time `json:"time"`
 	Hostname string    `json:"hostname"`
 	Paths    []string  `json:"paths"`
+	Summary  struct {
+		DataAdded uint64 `json:"data_added"`
+	} `json:"summary"`
 }
 
 type TreeNode struct {

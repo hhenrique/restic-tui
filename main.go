@@ -86,8 +86,16 @@ func listWindow(cursor, offset, total, visible int) (start, end, newOffset int) 
 
 // reservedLines accounts for: title+breadcrumb line, esc-hint line, blank line,
 // "N more above" indicator (reserved even when unused, to keep the budget stable),
-// "N more below" indicator (same), blank line, help line.
+// "N more below" indicator (same), blank line, help line. (tree view)
 const reservedLines = 7
+
+// heatmapLines is the fixed height of the rendered heatmap block (1 month-label
+// row + 7 weekday rows), independent of terminal width.
+const heatmapLines = 8
+
+// snapshotReservedLines: title+blank(2), heatmap block, blank(1), "more above"/
+// "more below" indicators reserved (2), blank+help(2).
+const snapshotReservedLines = 2 + heatmapLines + 1 + 2 + 2
 
 func (m *model) visibleRows() int {
 	v := m.height - reservedLines
@@ -97,8 +105,16 @@ func (m *model) visibleRows() int {
 	return v
 }
 
+func (m *model) visibleSnapRows() int {
+	v := m.height - snapshotReservedLines
+	if v < 1 {
+		v = 1
+	}
+	return v
+}
+
 func (m *model) clampSnapOffset() {
-	_, _, offset := listWindow(m.snapCursor, m.snapOffset, len(m.snapshots), m.visibleRows())
+	_, _, offset := listWindow(m.snapCursor, m.snapOffset, len(m.snapshots), m.visibleSnapRows())
 	m.snapOffset = offset
 }
 
@@ -438,8 +454,10 @@ func (m model) View() string {
 		b.WriteString(titleStyle.Render("Snapshots") + "\n\n")
 		if len(m.snapshots) == 0 {
 			b.WriteString(dimStyle.Render("Loading / no snapshots found...") + "\n")
+		} else {
+			b.WriteString(renderHeatmap(m.snapshots, m.width) + "\n")
 		}
-		start, end, _ := listWindow(m.snapCursor, m.snapOffset, len(m.snapshots), visible)
+		start, end, _ := listWindow(m.snapCursor, m.snapOffset, len(m.snapshots), m.visibleSnapRows())
 		if start > 0 {
 			b.WriteString(dimStyle.Render(fmt.Sprintf("  ↑ %d more above", start)) + "\n")
 		}

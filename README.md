@@ -23,6 +23,77 @@ go build -o restic-tui .
 ./restic-tui
 ```
 
+## Automatic backups (systemd timer)
+
+Backups run via a systemd **user** timer, not cron (this system has no
+`crontab` binary — systemd timers are the native scheduling mechanism here).
+
+Two units live in `~/.config/systemd/user/`:
+
+- `restic-backup.service` — a oneshot service that runs:
+  ```sh
+  restic backup $HOME --exclude-file=$HOME/.restic-excludes
+  ```
+  with credentials loaded from `~/.config/systemd/user/restic-backup.env`
+  (a plain `KEY=VALUE` copy of `~/.restic-env`, with `export` stripped —
+  `chmod 600`, not committed anywhere).
+- `restic-backup.timer` — triggers the service on a schedule.
+
+### Current setup: daily
+
+```ini
+# ~/.config/systemd/user/restic-backup.timer
+[Timer]
+OnCalendar=daily
+Persistent=true
+RandomizedDelaySec=30min
+```
+
+`Persistent=true` means a missed run (e.g. laptop was off at the scheduled
+time) fires as soon as the system is next up. `RandomizedDelaySec` spreads
+the actual run time by up to 30 minutes so it isn't pinned to the exact
+same second every day.
+
+Enable/check:
+```sh
+systemctl --user daemon-reload
+systemctl --user enable --now restic-backup.timer
+systemctl --user list-timers restic-backup.timer   # next scheduled run
+journalctl --user -u restic-backup.service          # backup run history/output
+```
+
+Trigger a run immediately (outside the schedule), e.g. to verify it works:
+```sh
+systemctl --user start restic-backup.service
+```
+
+### Switching to weekly instead
+
+Daily and weekly aren't meant to run together against the same repo — daily
+already covers everything weekly would, at the same storage cost (restic
+dedups unchanged data regardless of cadence), so weekly only adds value if
+you *replace* daily, e.g. to reduce how often the machine wakes up/spins disks.
+To switch, edit the timer and reload:
+
+```ini
+# ~/.config/systemd/user/restic-backup.timer
+[Timer]
+OnCalendar=weekly          # runs Monday 00:00, or pick e.g. "Sun *-*-* 03:00:00"
+Persistent=true
+RandomizedDelaySec=1h
+```
+
+```sh
+systemctl --user daemon-reload
+systemctl --user restart restic-backup.timer
+```
+
+### Disabling
+
+```sh
+systemctl --user disable --now restic-backup.timer
+```
+
 ## Features
 
 - **Snapshot list** — browse all snapshots, newest first
