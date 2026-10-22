@@ -107,12 +107,23 @@ systemctl --user disable --now restic-backup.timer
 ## Shell warning: "backup is due" (scripts/backup-due-check)
 
 `scripts/backup-due-check` prints a warning in every new interactive shell
-if the last backup is stale or failed. It reads the `restic-backup.service`
-systemd unit's own structured properties (`ExecMainExitTimestamp`, `Result`)
-— **not** restic itself — so it costs ~15ms, not the ~3s restic pays per
-invocation to derive its repository key. It only makes sense paired with
-the systemd timer setup above, since it depends on that service's name and
-state.
+if the last backup is stale or failed. It reads stamp files in
+`${XDG_STATE_HOME:-~/.local/state}/restic-backup/` (`last-success`,
+`last-failure`; the file's mtime is the completion time) — **not** restic
+itself — so it costs a couple of `stat` calls, not the ~3s restic pays per
+invocation to derive its repository key.
+
+The stamps are written by an `ExecStopPost=` line in
+`restic-backup.service`, which sees `$SERVICE_RESULT`:
+
+```ini
+ExecStopPost=/bin/sh -c 'd="${XDG_STATE_HOME:-$HOME/.local/state}/restic-backup"; mkdir -p "$d" && if [ "$SERVICE_RESULT" = success ]; then touch "$d/last-success"; else touch "$d/last-failure"; fi'
+```
+
+(Systemd's own unit properties and `systemctl show` aren't used: they're
+discarded when a oneshot unit unloads or the user manager restarts.)
+A backup run by hand can be recorded too:
+`touch ~/.local/state/restic-backup/last-success`.
 
 ### Deploy
 
@@ -137,7 +148,7 @@ Open a new shell (or `source ~/.bashrc`) to pick it up.
 - **Red warning** if stale:
   `⚠ Backup is due. Last backup was N day(s) ago on <timestamp>.`
 - **Yellow warning** if the last run failed but isn't stale yet, or if the
-  service has never completed a run.
+  no backup has been recorded yet.
 
 ### Configuring the threshold
 
@@ -148,6 +159,34 @@ the call:
 export BACKUP_DUE_DAYS=7
 [ -x ~/.local/bin/backup-due-check ] && ~/.local/bin/backup-due-check
 ```
+
+## Omarchy bar widget (omarchy-plugin/)
+
+A bar icon and panel for [Omarchy](https://omarchy.org)'s shell that shows
+the state of your backups at a glance: the last snapshot (time, data added,
+host, paths, id) and the last 7 days, newest first, with a bar per day scaled
+to the data added. The icon turns red when the backup is overdue or the last
+run failed.
+
+![Omarchy panel: last snapshot and the last 7 days](docs/omarchy-panel.png)
+
+*(Live capture from a real repository.)*
+
+It gets its data from `restic snapshots --json` (credentials from the
+environment or `~/.restic-env`) and from the same stamp files as
+`backup-due-check`, so install those first for failure detection. Results are
+cached, so the panel opens instantly; a live refresh runs every 15 minutes
+(opening the repository costs ~3s). Right-click the icon or press `r` in the
+panel to refresh now.
+
+```sh
+cp -r omarchy-plugin ~/.config/omarchy/plugins/restic.backup-status
+omarchy-shell shell rescanPlugins
+omarchy plugin enable restic.backup-status
+```
+
+Settings (refresh interval, "stale after" days, env file) are in
+`omarchy-plugin/manifest.json`; see `omarchy-plugin/README.md` for details.
 
 ## Features
 

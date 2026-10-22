@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "restic.backup-status",
+  "name": "Restic backup",
+  "version": "1.0.0",
+  "author": "Helder Henrique",
+  "license": "MIT",
+  "description": "Last restic snapshot and a 7-day backup heatmap in a native Omarchy bar panel.",
+  "kinds": ["bar-widget"],
+  "entryPoints": {
+    "barWidget": "Panel.qml"
+  },
+  "barWidget": {
+    "displayName": "Restic backup",
+    "description": "Shows when the last snapshot ran, what it added, and which of the last 7 days have a backup.",
+    "category": "Files",
+    "aliases": ["restic", "backup"],
+    "allowMultiple": false,
+    "defaultSection": "right",
+    "defaults": {
+      "refreshIntervalSec": 900,
+      "staleAfterDays": 3,
+      "envFile": ""
+    },
+    "schema": [
+      { "key": "refreshIntervalSec", "type": "integer", "label": "Refresh interval (seconds)", "min": 60, "max": 86400, "step": 60, "defaultValue": 900, "description": "Each refresh runs `restic snapshots`, which opens the repository (slow KDF + network). The panel shows cached data instantly in between." },
+      { "key": "staleAfterDays", "type": "integer", "label": "Stale after (days)", "min": 1, "max": 30, "step": 1, "defaultValue": 3, "description": "Flag the backup as overdue when the last snapshot is at least this old." },
+      { "key": "envFile", "type": "path", "label": "Restic env file", "defaultValue": "", "description": "Optional. File with RESTIC_REPOSITORY / RESTIC_PASSWORD / B2_* lines. Defaults to ~/.restic-env when the variables aren't already in the shell's environment." }
+    ]
+  }
+}
