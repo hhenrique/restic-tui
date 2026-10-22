@@ -160,6 +160,34 @@ export BACKUP_DUE_DAYS=7
 [ -x ~/.local/bin/backup-due-check ] && ~/.local/bin/backup-due-check
 ```
 
+## Omarchy bar widget (omarchy-plugin/)
+
+A bar icon and panel for [Omarchy](https://omarchy.org)'s shell that shows
+the state of your backups at a glance: the last snapshot (time, data added,
+host, paths, id) and the last 7 days, newest first, with a bar per day scaled
+to the data added. The icon turns red when the backup is overdue or the last
+run failed.
+
+![Omarchy panel: last snapshot and the last 7 days](docs/omarchy-panel.png)
+
+*(Live capture from a real repository.)*
+
+It gets its data from `restic snapshots --json` (credentials from the
+environment or `~/.restic-env`) and from the same stamp files as
+`backup-due-check`, so install those first for failure detection. Results are
+cached, so the panel opens instantly; a live refresh runs every 15 minutes
+(opening the repository costs ~3s). Right-click the icon or press `r` in the
+panel to refresh now.
+
+```sh
+cp -r omarchy-plugin ~/.config/omarchy/plugins/restic.backup-status
+omarchy-shell shell rescanPlugins
+omarchy plugin enable restic.backup-status
+```
+
+Settings (refresh interval, "stale after" days, env file) are in
+`omarchy-plugin/manifest.json`; see `omarchy-plugin/README.md` for details.
+
 ## Features
 
 - **Snapshot list** — browse all snapshots, newest first
