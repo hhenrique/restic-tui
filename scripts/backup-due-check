@@ -1,29 +1,31 @@
 #!/usr/bin/env bash
-# Prints a warning if the restic-backup systemd service hasn't completed
-# successfully within BACKUP_DUE_DAYS (default 3). Reads systemd unit
-# properties directly (fast, no restic invocation / no KDF cost) rather
-# than grepping journal log text, since property values are structured
-# and stable across restic/systemd message-wording changes.
+# Prints a warning if no backup has succeeded within BACKUP_DUE_DAYS (default 3).
+# Reads stamp files (mtime = completion time) that restic-backup.service writes
+# from ExecStopPost, so it costs no restic invocation / KDF and survives unit
+# unloads and user-manager restarts. A manual backup can count too:
+#   touch "${XDG_STATE_HOME:-$HOME/.local/state}/restic-backup/last-success"
 
 set -u
 
-unit="restic-backup.service"
+state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/restic-backup"
 threshold_days="${BACKUP_DUE_DAYS:-3}"
 
-ts=$(systemctl --user show "$unit" -p ExecMainExitTimestamp --value 2>/dev/null)
-result=$(systemctl --user show "$unit" -p Result --value 2>/dev/null)
+ok_epoch=$(stat -c %Y "$state_dir/last-success" 2>/dev/null)
+fail_epoch=$(stat -c %Y "$state_dir/last-failure" 2>/dev/null)
 
-if [ -z "$ts" ] || [ "$ts" = "n/a" ]; then
-    echo -e "\e[33m⚠ Backup status unknown — $unit has not completed a run yet.\e[0m"
+if [ -z "$ok_epoch" ] && [ -z "$fail_epoch" ]; then
+    echo -e "\e[33m⚠ Backup status unknown — no backup run recorded in $state_dir yet.\e[0m"
     exit 0
 fi
 
-last_epoch=$(date -d "$ts" +%s 2>/dev/null) || exit 0
 now_epoch=$(date +%s)
-days_ago=$(( (now_epoch - last_epoch) / 86400 ))
 
+if [ -n "$fail_epoch" ] && [ "$fail_epoch" -gt "${ok_epoch:-0}" ]; then
+    echo -e "\e[33m⚠ Last backup run ($(date -d "@$fail_epoch")) failed.\e[0m"
+    exit 0
+fi
+
+days_ago=$(( (now_epoch - ok_epoch) / 86400 ))
 if [ "$days_ago" -ge "$threshold_days" ]; then
-    echo -e "\e[31m⚠ Backup is due. Last backup was $days_ago day(s) ago on $ts.\e[0m"
-elif [ "$result" != "success" ] && [ -n "$result" ]; then
-    echo -e "\e[33m⚠ Last backup run ($ts) did not succeed — result: $result.\e[0m"
+    echo -e "\e[31m⚠ Backup is due. Last backup was $days_ago day(s) ago on $(date -d "@$ok_epoch").\e[0m"
 fi
